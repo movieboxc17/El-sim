@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Circuit Simulator Pro</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0d1117;--bg1:#161b22;--bg2:#21262d;--bg3:#30363d;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.16);
+  --t1:#e6edf3;--t2:#8b949e;--t3:#484f58;
+  --blue:#58a6ff;--blue-bg:rgba(88,166,255,0.1);--blue-bd:rgba(88,166,255,0.35);
+  --green:#3fb950;--green-bg:rgba(63,185,80,0.1);--green-bd:rgba(63,185,80,0.35);
+  --amber:#d29922;--amber-bg:rgba(210,153,34,0.1);--amber-bd:rgba(210,153,34,0.35);
+  --red:#f85149;--red-bg:rgba(248,81,73,0.1);--red-bd:rgba(248,81,73,0.35);
+  --purple:#bc8cff;--purple-bg:rgba(188,140,255,0.1);--purple-bd:rgba(188,140,255,0.35);
+  --teal:#39d353;
+  --r:8px;--rlg:12px;
+  --sb:180px;--rp:220px;--tb:50px;--ib:30px;--pb:64px;
+}
+html,body{height:100%;background:var(--bg0);color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+  font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+
+/* ── Shell grid ── */
+#shell{display:grid;height:100dvh;min-height:100vh;
+  grid-template-columns:var(--sb) 1fr var(--rp);
+  grid-template-rows:var(--tb) 1fr var(--ib) var(--pb);
+  grid-template-areas:"sb tb rp""sb cv rp""sb ib rp""sb pr rp"}
+
+/* iPad landscape squeeze */
+@media(max-width:900px){
+  :root{--sb:160px;--rp:190px}
+}
+/* iPad portrait / phone: stack */
+@media(max-width:700px){
+  :root{--sb:0px;--rp:0px;--tb:50px;--ib:28px;--pb:60px}
+  #shell{
+    grid-template-columns:1fr;
+    grid-template-rows:var(--tb) 44px 1fr var(--ib) var(--pb);
+    grid-template-areas:"tb""cb""cv""ib""pr"}
+  #sidebar,#rp-panel{display:none!important}
+  #comp-bar{display:flex!important}
+  #bottom-sheet-btn{display:flex!important}
+}
+
+/* ── Sidebar ── */
+#sidebar{grid-area:sb;background:var(--bg1);border-right:0.5px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;z-index:4}
+.sh{padding:10px 12px 7px;font-size:10px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--t3);border-bottom:0.5px solid var(--border);flex-shrink:0}
+.cat-header{padding:6px 10px 3px;font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--t3)}
+#comp-list{flex:1;overflow-y:auto;padding:6px}
+.comp-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 9px;margin-bottom:2px;
+  background:transparent;border:0.5px solid transparent;border-radius:var(--r);
+  cursor:pointer;font-size:12.5px;color:var(--t2);transition:background .12s,border-color .12s,color .12s;
+  text-align:left;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.comp-btn:hover,.comp-btn:focus{background:var(--bg3);color:var(--t1);outline:none}
+.comp-btn.active{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+.ci{width:34px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.hint{margin:8px;padding:8px 10px;background:var(--bg2);border:0.5px solid var(--border);
+  border-radius:var(--r);font-size:10.5px;color:var(--t3);line-height:1.6;flex-shrink:0}
+.hint b{color:var(--t2);font-weight:500}
+
+/* ── Mobile comp bar ── */
+#comp-bar{display:none;grid-area:cb;background:var(--bg1);border-bottom:0.5px solid var(--border);
+  overflow-x:auto;overflow-y:hidden;padding:6px 8px;gap:5px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;align-items:center}
+#comp-bar::-webkit-scrollbar{display:none}
+.cpill{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+  cursor:pointer;font-size:11.5px;color:var(--t2);white-space:nowrap;
+  background:var(--bg2);border:0.5px solid var(--border);
+  transition:background .12s,border-color .12s,color .12s;touch-action:manipulation}
+.cpill.active{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+
+/* ── Toolbar ── */
+#toolbar{grid-area:tb;display:flex;align-items:center;gap:5px;padding:0 12px;
+  background:var(--bg1);border-bottom:0.5px solid var(--border);z-index:5;flex-shrink:0}
+.tbb{padding:5px 10px;font-size:12px;background:var(--bg2);border:0.5px solid var(--border2);
+  border-radius:var(--r);cursor:pointer;color:var(--t2);
+  transition:background .12s,color .12s,border-color .12s;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tbb:hover{background:var(--bg3);color:var(--t1)}
+.tbb.active{border-color:var(--blue-bd);color:var(--blue);background:var(--blue-bg)}
+.tbb.warn{border-color:var(--amber-bd);color:var(--amber)}
+.tbb.danger{border-color:var(--red-bd);color:var(--red)}
+#app-title{font-size:13px;font-weight:700;color:var(--t1);margin-right:4px;white-space:nowrap;letter-spacing:-.01em}
+#sim-btn{padding:5px 14px;font-size:12px;font-weight:600;background:var(--green-bg);
+  border:0.5px solid var(--green-bd);border-radius:var(--r);cursor:pointer;color:var(--green);
+  transition:opacity .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;white-space:nowrap}
+#sim-btn:hover{opacity:.8}
+#sim-btn.running{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)}
+.tb-sep{width:0.5px;height:20px;background:var(--border);flex-shrink:0;margin:0 2px}
+#zoom-label{font-size:11px;color:var(--t3);min-width:36px;text-align:center}
+
+/* ── Canvas ── */
+#canvas-wrap{grid-area:cv;position:relative;overflow:hidden;background:var(--bg0);touch-action:none}
+#grid-cv,#main-cv{position:absolute;top:0;left:0;pointer-events:none}
+#main-cv{pointer-events:all;touch-action:none}
+
+/* ── Info bar ── */
+#info-bar{grid-area:ib;display:flex;align-items:center;gap:8px;padding:0 12px;
+  font-size:11.5px;color:var(--t3);background:var(--bg1);border-top:0.5px solid var(--border);overflow:hidden}
+.chip{flex-shrink:0;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:.03em}
+.chip-ok{background:var(--green-bg);color:var(--green);border:0.5px solid var(--green-bd)}
+.chip-warn{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-bd)}
+.chip-err{background:var(--red-bg);color:var(--red);border:0.5px solid var(--red-bd)}
+.chip-info{background:var(--blue-bg);color:var(--blue);border:0.5px solid var(--blue-bd)}
+
+/* ── Properties panel ── */
+#props-panel{grid-area:pr;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:0 14px;font-size:12px;color:var(--t2);background:var(--bg1);
+  border-top:0.5px solid var(--border);overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;min-height:var(--pb)}
+#props-panel::-webkit-scrollbar{display:none}
+.pg{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.pl{font-size:10px;color:var(--t3)}
+.pi{width:74px;padding:4px 7px;font-size:12px;background:var(--bg2);
+  border:0.5px solid var(--border2);border-radius:6px;color:var(--t1);-webkit-appearance:none}
+.pi:focus{outline:none;border-color:var(--blue)}
+.ps{padding:4px 7px;font-size:12px;background:var(--bg2);border:0.5px solid var(--border2);
+  border-radius:6px;color:var(--t1);-webkit-appearance:none;cursor:pointer}
+.del-btn{padding:4px 10px;font-size:12px;background:var(--red-bg);
+  border:0.5px solid var(--red-bd);border-radius:6px;cursor:pointer;color:var(--red);flex-shrink:0}
+.prop-readout{padding:4px 9px;background:var(--bg2);border:0.5px solid var(--border);
+  border-radius:6px;font-size:11px;color:var(--blue);flex-shrink:0;white-space:nowrap}
+
+/* ── Results panel ── */
+#rp-panel{grid-area:rp;background:var(--bg1);border-left:0.5px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;z-index:4}
+.rph{padding:10px 12px 7px;font-size:10px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--t3);border-bottom:0.5px solid var(--border);flex-shrink:0}
+#results-scroll{flex:1;overflow-y:auto;padding:7px}
+.rc{padding:8px 10px;margin-bottom:4px;background:var(--bg2);border:0.5px solid var(--border);
+  border-radius:var(--r);font-size:12px}
+.rc.warn{border-color:var(--amber-bd);background:var(--amber-bg)}
+.rc.err{border-color:var(--red-bd);background:var(--red-bg)}
+.rc.ok{border-color:var(--green-bd);background:var(--green-bg)}
+.rc.info{border-color:var(--blue-bd);background:var(--blue-bg)}
+.rl{font-size:10px;color:var(--t3);margin-bottom:2px}
+.rv{font-size:14px;font-weight:600;color:var(--t1)}
+.rc.warn .rv{color:var(--amber)}.rc.err .rv{color:var(--red)}.rc.ok .rv{color:var(--green)}.rc.info .rv{color:var(--blue)}
+.rs{font-size:10px;color:var(--t3);margin-top:1px}
+#diag-sec{padding:0 7px 8px;flex-shrink:0}
+.dh{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:5px}
+.di{padding:5px 8px;border-radius:6px;margin-bottom:3px;font-size:11px;line-height:1.45}
+.di-ok{background:var(--green-bg);color:var(--green);border:0.5px solid var(--green-bd)}
+.di-warn{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-bd)}
+.di-err{background:var(--red-bg);color:var(--red);border:0.5px solid var(--red-bd)}
+.di-info{background:var(--blue-bg);color:var(--blue);border:0.5px solid var(--blue-bd)}
+
+/* ── Modal / bottom sheet ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#modal-overlay.open{display:flex}
+#modal{background:var(--bg1);border:0.5px solid var(--border2);border-radius:var(--rlg);
+  padding:20px;min-width:280px;max-width:380px;width:90%;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:600;color:var(--t1);margin-bottom:14px}
+.modal-row{margin-bottom:10px}
+.modal-label{font-size:11px;color:var(--t3);margin-bottom:4px}
+.modal-input{width:100%;padding:7px 10px;font-size:13px;background:var(--bg2);
+  border:0.5px solid var(--border2);border-radius:var(--r);color:var(--t1)}
+.modal-input:focus{outline:none;border-color:var(--blue)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.mbtn{padding:7px 14px;font-size:12px;border-radius:var(--r);cursor:pointer;font-weight:500}
+.mbtn-cancel{background:var(--bg3);border:0.5px solid var(--border2);color:var(--t2)}
+.mbtn-ok{background:var(--blue-bg);border:0.5px solid var(--blue-bd);color:var(--blue)}
+.mbtn-del{background:var(--red-bg);border:0.5px solid var(--red-bd);color:var(--red)}
+
+/* ── Bottom sheet (mobile results) ── */
+#bottom-sheet-btn{display:none;position:fixed;bottom:70px;right:16px;z-index:50;
+  align-items:center;gap:6px;padding:10px 14px;border-radius:20px;
+  background:var(--bg2);border:0.5px solid var(--border2);cursor:pointer;
+  font-size:12px;color:var(--t1);box-shadow:0 4px 20px rgba(0,0,0,.4)}
+#bottom-sheet{position:fixed;bottom:0;left:0;right:0;z-index:60;
+  background:var(--bg1);border-top:0.5px solid var(--border2);
+  border-radius:16px 16px 0 0;max-height:60vh;overflow-y:auto;
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+#bottom-sheet.open{transform:translateY(0)}
+#bs-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 6px}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--bg2);border:0.5px solid var(--border2);border-radius:20px;
+  padding:8px 16px;font-size:12px;color:var(--t1);z-index:200;
+  transition:transform .25s ease,opacity .25s ease;opacity:0;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── Scrollbars ── */
+*{scrollbar-width:thin;scrollbar-color:var(--bg3) transparent}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="shell">
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="sh">Components</div>
+  <div id="comp-list"></div>
+  <div class="hint">
+    <b>Place:</b> pick → tap canvas<br>
+    <b>Wire:</b> tap start → tap end<br>
+    <b>Select:</b> tap component<br>
+    <b>Move:</b> drag in select mode<br>
+    <b>Zoom:</b> pinch or scroll wheel<br>
+    <b>Pan:</b> 2-finger drag / space+drag
+  </div>
+</aside>
+
+<!-- TOOLBAR -->
+<header id="toolbar">
+  <span id="app-title">⚡ Circuit Sim</span>
+  <div class="tb-sep"></div>
+  <button class="tbb" id="btn-select" onclick="setMode('select')" title="Select (S)">✦ Select</button>
+  <button class="tbb active" id="btn-place" onclick="setMode('place')" title="Place (P)">＋ Place</button>
+  <button class="tbb" id="btn-wire" onclick="selectTool('wire');setMode('place')" title="Wire (W)">— Wire</button>
+  <div class="tb-sep"></div>
+  <button class="tbb" onclick="undoAction()" title="Undo (Ctrl+Z)">↩ Undo</button>
+  <button class="tbb" onclick="resetZoom()" title="Reset zoom">⊡ Fit</button>
+  <span id="zoom-label">100%</span>
+  <div class="tb-sep"></div>
+  <button class="tbb" id="auto-btn" onclick="toggleAutoRun()" title="Auto-run simulation">⚙ Auto</button>
+  <button id="sim-btn" onclick="runSimulation()" title="Run simulation (Enter)">▶ Simulate</button>
+  <div class="tb-sep"></div>
+  <button class="tbb" onclick="saveCircuit()">💾 Save</button>
+  <button class="tbb" onclick="loadCircuit()">📂 Load</button>
+  <button class="tbb" onclick="exportPNG()">📷 PNG</button>
+  <button class="tbb" onclick="exportJSON()">⬇ JSON</button>
+  <button class="tbb warn" onclick="showClearConfirm()">🗑 Clear</button>
+</header>
+
+<!-- MOBILE COMP BAR -->
+<div id="comp-bar"></div>
+
+<!-- CANVAS -->
+<main id="canvas-wrap">
+  <canvas id="grid-cv"></canvas>
+  <canvas id="main-cv"></canvas>
+</main>
+
+<!-- INFO BAR -->
+<div id="info-bar">
+  <span id="info-chip"></span>
+  <span id="info-text">Select a component and tap the canvas to place it</span>
+</div>
+
+<!-- PROPERTIES PANEL -->
+<div id="props-panel">
+  <span style="font-size:12px;color:var(--t3)">Select a component to edit its properties</span>
+</div>
+
+<!-- RESULTS PANEL -->
+<aside id="rp-panel">
+  <div class="rph">Simulation Results</div>
+  <div id="results-scroll">
+    <div style="padding:20px 8px;text-align:center;color:var(--t3);font-size:12px;line-height:1.7">
+      Build a circuit then press<br><b style="color:var(--t2)">▶ Simulate</b>
+    </div>
+  </div>
+  <div id="diag-sec">
+    <div class="dh">Diagnosis</div>
+    <div id="diag-items"><div style="font-size:11px;color:var(--t3)">Run simulation first</div></div>
+  </div>
+</aside>
+
+</div><!-- /shell -->
+
+<!-- MOBILE RESULTS BUTTON -->
+<button id="bottom-sheet-btn" onclick="toggleBottomSheet()">
+  📊 Results
+</button>
+
+<!-- MOBILE BOTTOM SHEET -->
+<div id="bottom-sheet">
+  <div id="bs-handle"></div>
+  <div style="padding:0 12px 16px">
+    <div id="bs-results"></div>
+    <div id="bs-diag"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  COMPONENT CATALOGUE
+// ═══════════════════════════════════════════════════════
+const CATS = [
+  { label:'Sources', items:[
+    {type:'battery',   label:'Battery',       w:96,h:48, value:9,   unit:'V',  desc:'DC voltage source'},
+    {type:'ac_source', label:'AC Source',      w:96,h:48, value:12,  unit:'V',  desc:'AC voltage source',  freq:50},
+    {type:'vcc',       label:'VCC Rail',       w:0, h:0,             desc:'Positive supply rail'},
+    {type:'ground',    label:'Ground',         w:0, h:0,             desc:'Reference potential'},
+  ]},
+  { label:'Passive', items:[
+    {type:'resistor',  label:'Resistor',       w:96,h:48, value:100, unit:'Ω',  desc:'Resistance'},
+    {type:'capacitor', label:'Capacitor',      w:96,h:48, value:100, unit:'µF', desc:'Capacitance'},
+    {type:'inductor',  label:'Inductor',       w:96,h:48, value:10,  unit:'mH', desc:'Inductance'},
+    {type:'potentiometer',label:'Potentiometer',w:96,h:48,value:10000,unit:'Ω', desc:'Variable resistor', wiper:50},
+  ]},
+  { label:'Semiconductors', items:[
+    {type:'led',       label:'LED',            w:96,h:48, value:2.0, unit:'Vf', desc:'Light-emitting diode', colour:'red'},
+    {type:'diode',     label:'Diode',          w:96,h:48, value:0.7, unit:'Vf', desc:'Rectifier diode'},
+    {type:'zener',     label:'Zener Diode',    w:96,h:48, value:5.1, unit:'Vz', desc:'Voltage regulation'},
+    {type:'npn',       label:'NPN Transistor', w:80,h:96, value:100, unit:'hFE',desc:'NPN BJT'},
+    {type:'pnp',       label:'PNP Transistor', w:80,h:96, value:100, unit:'hFE',desc:'PNP BJT'},
+  ]},
+  { label:'Outputs', items:[
+    {type:'bulb',      label:'Bulb',           w:96,h:48, value:60,  unit:'Ω',  desc:'Incandescent lamp'},
+    {type:'motor',     label:'DC Motor',       w:96,h:48, value:10,  unit:'Ω',  desc:'DC motor',  rpm:0},
+    {type:'buzzer',    label:'Buzzer',         w:96,h:48, value:8,   unit:'Ω',  desc:'Piezo buzzer'},
+    {type:'relay',     label:'Relay',          w:96,h:56, value:200, unit:'Ω',  desc:'Electromagnetic relay', closed:false},
+  ]},
+  { label:'Switches', items:[
+    {type:'switch',    label:'Switch',         w:96,h:48,             desc:'SPST switch', closed:true},
+    {type:'push_btn',  label:'Push Button',    w:96,h:48,             desc:'Momentary button', closed:false},
+    {type:'spdt',      label:'SPDT Switch',    w:96,h:48,             desc:'Single-pole double-throw', pos:0},
+  ]},
+  { label:'Meters', items:[
+    {type:'voltmeter', label:'Voltmeter',      w:96,h:48,             desc:'Measures voltage'},
+    {type:'ammeter',   label:'Ammeter',        w:96,h:48,             desc:'Measures current'},
+    {type:'ohmmeter',  label:'Ohmmeter',       w:96,h:48,             desc:'Measures resistance'},
+  ]},
+  { label:'Logic', items:[
+    {type:'and_gate',  label:'AND Gate',       w:96,h:64,             desc:'Logic AND'},
+    {type:'or_gate',   label:'OR Gate',        w:96,h:64,             desc:'Logic OR'},
+    {type:'not_gate',  label:'NOT Gate',       w:80,h:48,             desc:'Logic NOT / Inverter'},
+    {type:'nand_gate', label:'NAND Gate',      w:96,h:64,             desc:'Logic NAND'},
+  ]},
+];
+
+// Flat list
+const ALL_COMPS = CATS.flatMap(c=>c.items);
+function defFor(type){ return ALL_COMPS.find(d=>d.type===type)||{w:96,h:48} }
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const GRID = 48;
+let W=0,H=0;
+let mode='place';
+let selectedTool='wire';
+let components=[];
+let selectedComp=null;
+let wireStart=null;
+let wirePreviewEnd={x:0,y:0};
+let simResults=null;
+let nextId=1;
+let autoRun=false;
+let autoRunTimer=null;
+let undoStack=[];
+
+// Viewport transform (pan + zoom)
+let vx=0,vy=0,vz=1; // offset + scale
+
+// Touch tracking
+let touches={};
+let lastPinchDist=0;
+let lastPinchMid={x:0,y:0};
+let isPanning=false;
+let panStart={x:0,y:0};
+let panOrigin={x:0,y:0};
+let isDraggingComp=false;
+let dragOffset={x:0,y:0};
+let spaceDown=false;
+let touchStartPos=null;
+let touchStartTime=0;
+let touchMoved=false;
+
+const canvasWrap=document.getElementById('canvas-wrap');
+const gridCv=document.getElementById('grid-cv');
+const mainCv=document.getElementById('main-cv');
+const ctx=mainCv.getContext('2d');
+const gctx=gridCv.getContext('2d');
+
+// ═══════════════════════════════════════════════════════
+//  RESIZE + DPR
+// ═══════════════════════════════════════════════════════
+function resize(){
+  W=canvasWrap.clientWidth; H=canvasWrap.clientHeight;
+  const dpr=window.devicePixelRatio||1;
+  [gridCv,mainCv].forEach(c=>{
+    c.width=W*dpr; c.height=H*dpr;
+    c.style.width=W+'px'; c.style.height=H+'px';
+  });
+  gctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawGrid(); draw();
+}
+window.addEventListener('resize',()=>{resize();});
+
+// ═══════════════════════════════════════════════════════
+//  GRID
+// ═══════════════════════════════════════════════════════
+function drawGrid(){
+  gctx.clearRect(0,0,W,H);
+  const gs=GRID*vz;
+  const ox=((vx%gs)+gs)%gs, oy=((vy%gs)+gs)%gs;
+  gctx.strokeStyle='rgba(255,255,255,0.04)'; gctx.lineWidth=0.5;
+  for(let x=ox;x<W;x+=gs){gctx.beginPath();gctx.moveTo(x,0);gctx.lineTo(x,H);gctx.stroke();}
+  for(let y=oy;y<H;y+=gs){gctx.beginPath();gctx.moveTo(0,y);gctx.lineTo(W,y);gctx.stroke();}
+  gctx.fillStyle='rgba(255,255,255,0.13)';
+  for(let x=ox;x<W;x+=gs)for(let y=oy;y<H;y+=gs){
+    gctx.beginPath();gctx.arc(x,y,1.5,0,Math.PI*2);gctx.fill();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  COORDINATE TRANSFORMS
+// ═══════════════════════════════════════════════════════
+function screenToWorld(sx,sy){return{x:(sx-vx)/vz,y:(sy-vy)/vz}}
+function worldToScreen(wx,wy){return{x:wx*vz+vx,y:wy*vz+vy}}
+function snapW(v){return Math.round(v/GRID)*GRID}
+
+// ═══════════════════════════════════════════════════════
+//  TERMINALS
+// ═══════════════════════════════════════════════════════
+function getTerminals(c){
+  if(c.type==='wire')   return [{x:c.x,y:c.y},{x:c.x2,y:c.y2}];
+  if(c.type==='ground'||c.type==='vcc') return [{x:c.x,y:c.y}];
+  const cy=c.y+Math.round((c.h||48)/2);
+  // transistors have 3 terminals
+  if(c.type==='npn'||c.type==='pnp'){
+    return [{x:c.x,y:c.y+16},{x:c.x,y:c.y+(c.h||96)-16},{x:c.x+(c.w||80),y:c.y+(c.h||96)/2}];
+  }
+  // logic gates: multiple inputs
+  if(c.type==='and_gate'||c.type==='or_gate'||c.type==='nand_gate'){
+    const h=c.h||64;
+    return [{x:c.x,y:c.y+Math.round(h/3)},{x:c.x,y:c.y+Math.round(2*h/3)},{x:c.x+(c.w||96),y:c.y+Math.round(h/2)}];
+  }
+  if(c.type==='not_gate'){
+    const h=c.h||48;
+    return [{x:c.x,y:c.y+Math.round(h/2)},{x:c.x+(c.w||80),y:c.y+Math.round(h/2)}];
+  }
+  return [{x:c.x,y:cy},{x:c.x+(c.w||96),y:cy}];
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════════
+const C={
+  stroke:'#8b949e',text:'#c9d1d9',dim:'#3d444d',
+  blue:'#58a6ff',amber:'#e3b341',green:'#56d364',red:'#f85149',
+  yellow:'#ffd700',purple:'#bc8cff',teal:'#39d353',orange:'#f0883e'
+};
+
+function applyTransform(){
+  ctx.setTransform(
+    (window.devicePixelRatio||1)*vz,0,0,
+    (window.devicePixelRatio||1)*vz,
+    (window.devicePixelRatio||1)*vx,
+    (window.devicePixelRatio||1)*vy
+  );
+}
+function resetTransform(){
+  ctx.setTransform(window.devicePixelRatio||1,0,0,window.devicePixelRatio||1,0,0);
+}
+
+function draw(){
+  const dpr=window.devicePixelRatio||1;
+  ctx.clearRect(0,0,W,H);
+  applyTransform();
+
+  // Draw wires first (under components)
+  components.filter(c=>c.type==='wire').forEach(c=>drawComp(c));
+  // Draw non-wire components
+  components.filter(c=>c.type!=='wire').forEach(c=>drawComp(c));
+
+  // Wire preview
+  if(wireStart&&mode==='place'&&selectedTool==='wire'){
+    ctx.save();
+    ctx.strokeStyle=C.blue; ctx.lineWidth=2/vz;
+    ctx.setLineDash([6/vz,4/vz]);
+    ctx.beginPath(); ctx.moveTo(wireStart.x,wireStart.y);
+    ctx.lineTo(wirePreviewEnd.x,wirePreviewEnd.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.blue;
+    ctx.beginPath(); ctx.arc(wireStart.x,wireStart.y,5/vz,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Ghost placement preview
+  if(mode==='place'&&selectedTool!=='wire'){
+    ctx.save(); ctx.globalAlpha=0.38;
+    const ghost=makeComp(selectedTool,wirePreviewEnd.x,wirePreviewEnd.y);
+    if(ghost){ctx.strokeStyle=C.blue;drawComp(ghost);}
+    ctx.restore();
+  }
+
+  resetTransform();
+}
+
+function drawComp(c,ghost=false){
+  ctx.save();
+  const sel=c===selectedComp;
+  const rd=simResults?simResults.cd[c.id]:null;
+  const stroke=sel?C.blue:C.stroke;
+  const textC=sel?C.blue:C.text;
+  ctx.strokeStyle=stroke; ctx.fillStyle='transparent';
+  ctx.lineWidth=(sel?2.2:1.6)/vz; ctx.lineCap='round'; ctx.lineJoin='round';
+  if(sel){ctx.shadowColor=C.blue;ctx.shadowBlur=10/vz;}
+
+  const {x,y}=c;
+  const w=c.w||0, h=c.h||0;
+  const cx=x+w/2, cy=y+h/2;
+  const cy2=y+Math.round(h/2);
+  const fs=(12/vz)+'px -apple-system,BlinkMacSystemFont,sans-serif';
+  const fsb=(11/vz)+'px -apple-system,BlinkMacSystemFont,sans-serif';
+
+  // ────── WIRE ──────
+  if(c.type==='wire'){
+    ctx.beginPath();
+    if(rd){
+      const mag=Math.min(1,Math.abs(rd.I)/0.5);
+      ctx.strokeStyle=`rgba(88,166,255,${0.3+mag*0.7})`;
+      ctx.lineWidth=(1.5+mag*3)/vz;
+      // animated flow direction
+      if(mag>0.05){
+        const dashLen=20/vz, gapLen=10/vz;
+        const speed=5; // segments per second
+        const offset=-(Date.now()/1000*speed*(rd.I>0?1:-1))%(dashLen+gapLen);
+        ctx.setLineDash([dashLen,gapLen]);
+        ctx.lineDashOffset=offset;
+      }
+    }
+    ctx.moveTo(c.x,c.y); ctx.lineTo(c.x2,c.y2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore(); return;
+  }
+
+  // ────── GROUND ──────
+  if(c.type==='ground'){
+    ctx.beginPath();
+    ctx.moveTo(x,y); ctx.lineTo(x,y+14/vz);
+    ctx.moveTo(x-16/vz,y+14/vz); ctx.lineTo(x+16/vz,y+14/vz);
+    ctx.moveTo(x-10/vz,y+20/vz); ctx.lineTo(x+10/vz,y+20/vz);
+    ctx.moveTo(x-4/vz, y+26/vz); ctx.lineTo(x+4/vz, y+26/vz);
+    ctx.stroke();
+    dot(x,y,stroke); ctx.restore(); return;
+  }
+
+  // ────── VCC ──────
+  if(c.type==='vcc'){
+    ctx.beginPath();
+    ctx.moveTo(x,y); ctx.lineTo(x,y-12/vz);
+    ctx.moveTo(x-14/vz,y-12/vz); ctx.lineTo(x+14/vz,y-12/vz);
+    ctx.stroke();
+    ctx.fillStyle=C.red; ctx.font='bold '+(11/vz)+'px sans-serif';
+    ctx.textAlign='center'; ctx.fillText('VCC',x,y-16/vz);
+    dot(x,y,stroke); ctx.restore(); return;
+  }
+
+  // ────── BATTERY ──────
+  if(c.type==='battery'){
+    const mx=x+w/2;
+    line(x,cy2,mx-14/vz,cy2); lw(3/vz);
+    line(mx-14/vz,cy2-12/vz,mx-14/vz,cy2+12/vz); lw(1.6/vz);
+    line(mx-5/vz,cy2-7/vz,mx-5/vz,cy2+7/vz); lw(3/vz);
+    line(mx+5/vz,cy2-12/vz,mx+5/vz,cy2+12/vz); lw(1.6/vz);
+    line(mx+14/vz,cy2-7/vz,mx+14/vz,cy2+7/vz);
+    line(mx+14/vz,cy2,x+w,cy2);
+    label(cx,cy2-17/vz,`${c.value}V`,textC,fsb);
+    ctx.fillStyle=C.green; label(x+6/vz,cy2-14/vz,'+',C.green,fs);
+    label(x+w-6/vz,cy2-14/vz,'−',C.red,fs);
+    dots(c,stroke);
+  }
+
+  // ────── AC SOURCE ──────
+  else if(c.type==='ac_source'){
+    line(x,cy2,x+16/vz,cy2); line(x+w-16/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,16/vz,0,Math.PI*2); ctx.stroke();
+    // sine wave inside circle
+    ctx.beginPath();
+    for(let i=0;i<=20;i++){
+      const t=i/20*Math.PI*2;
+      const px2=cx-12/vz+i/20*24/vz;
+      const py2=cy2+Math.sin(t)*7/vz;
+      i===0?ctx.moveTo(px2,py2):ctx.lineTo(px2,py2);
+    }
+    ctx.strokeStyle=stroke; ctx.lineWidth=1.2/vz; ctx.stroke();
+    label(cx,cy2-22/vz,`${c.value}V~`,textC,fsb);
+    if(c.freq)label(cx,cy2+26/vz,`${c.freq}Hz`,C.t3,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── RESISTOR ──────
+  else if(c.type==='resistor'){
+    line(x,cy2,x+12/vz,cy2);
+    ctx.beginPath(); ctx.rect(x+12/vz,cy2-10/vz,w-24/vz,20/vz); ctx.stroke();
+    line(x+w-12/vz,cy2,x+w,cy2);
+    label(cx,cy2-15/vz,`${fmtR(c.value)}`,textC,fsb);
+    if(rd)label(cx,cy2+27/vz,`${rd.V.toFixed(2)}V`,C.amber,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── CAPACITOR ──────
+  else if(c.type==='capacitor'){
+    line(x,cy2,cx-9/vz,cy2);
+    line(cx-9/vz,cy2-14/vz,cx-9/vz,cy2+14/vz); lw(2.5/vz);
+    line(cx+9/vz,cy2-14/vz,cx+9/vz,cy2+14/vz); lw(1.6/vz);
+    line(cx+9/vz,cy2,x+w,cy2);
+    label(cx,cy2-19/vz,`${c.value}µF`,textC,fsb);
+    if(rd)label(cx,cy2+28/vz,`${rd.V.toFixed(2)}V`,C.amber,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── INDUCTOR ──────
+  else if(c.type==='inductor'){
+    line(x,cy2,x+10/vz,cy2); line(x+w-10/vz,cy2,x+w,cy2);
+    // coil loops
+    const n=4, lw2=1.6/vz, r2=8/vz;
+    const startX=x+10/vz;
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const bx=startX+i*(w-20/vz)/n+(w-20/vz)/(n*2);
+      ctx.arc(bx,cy2,r2,Math.PI,0,false);
+    }
+    ctx.stroke();
+    label(cx,cy2-19/vz,`${c.value}mH`,textC,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── POTENTIOMETER ──────
+  else if(c.type==='potentiometer'){
+    line(x,cy2,x+12/vz,cy2);
+    ctx.beginPath(); ctx.rect(x+12/vz,cy2-10/vz,w-24/vz,20/vz); ctx.stroke();
+    line(x+w-12/vz,cy2,x+w,cy2);
+    // wiper arrow
+    const wipX=x+12/vz+(w-24/vz)*(c.wiper||50)/100;
+    line(wipX,cy2-10/vz,wipX,cy2-22/vz);
+    ctx.beginPath(); ctx.moveTo(wipX-6/vz,cy2-20/vz); ctx.lineTo(wipX,cy2-10/vz); ctx.lineTo(wipX+6/vz,cy2-20/vz); ctx.stroke();
+    label(cx,cy2+28/vz,`${c.value}Ω ${c.wiper||50}%`,textC,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── DIODE ──────
+  else if(c.type==='diode'||c.type==='zener'){
+    line(x,cy2,x+18/vz,cy2); line(x+w-18/vz,cy2,x+w,cy2);
+    ctx.beginPath();
+    ctx.moveTo(x+18/vz,cy2-13/vz); ctx.lineTo(x+18/vz,cy2+13/vz);
+    ctx.lineTo(x+w-18/vz,cy2); ctx.closePath(); ctx.stroke();
+    line(x+w-18/vz,cy2-13/vz,x+w-18/vz,cy2+13/vz);
+    if(c.type==='zener'){
+      line(x+w-18/vz,cy2-13/vz,x+w-12/vz,cy2-16/vz);
+      line(x+w-18/vz,cy2+13/vz,x+w-12/vz,cy2+16/vz);
+    }
+    label(cx,cy2-19/vz,c.type==='zener'?`Vz=${c.value}V`:`Vf=${c.value}V`,textC,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── LED ──────
+  else if(c.type==='led'){
+    const col=ledColor(c.colour||'red');
+    const on=rd&&Math.abs(rd.I)>0.002;
+    if(on){ctx.shadowColor=col;ctx.shadowBlur=18/vz;}
+    line(x,cy2,x+16/vz,cy2); line(x+w-16/vz,cy2,x+w,cy2);
+    ctx.beginPath();
+    ctx.moveTo(x+16/vz,cy2-13/vz); ctx.lineTo(x+16/vz,cy2+13/vz);
+    ctx.lineTo(x+w-16/vz,cy2); ctx.closePath();
+    ctx.moveTo(x+w-16/vz,cy2-13/vz); ctx.lineTo(x+w-16/vz,cy2+13/vz);
+    if(on){
+      ctx.strokeStyle=col;
+      ctx.fillStyle=col+'33';
+      ctx.fill();
+    }
+    ctx.stroke();
+    if(on){
+      const sc=C.stroke; ctx.strokeStyle=col; ctx.lineWidth=1.2/vz;
+      line(x+w,cy2-14/vz,x+w+12/vz,cy2-22/vz);
+      line(x+w+4/vz,cy2-6/vz,x+w+14/vz,cy2-10/vz);
+      ctx.strokeStyle=stroke; ctx.lineWidth=(sel?2.2:1.6)/vz;
+    }
+    label(cx,cy2-19/vz,`${c.value}Vf`,textC,fsb);
+    label(cx,cy2+28/vz,on?'◉ ON':'◎ OFF',on?col:C.dim,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── BULB ──────
+  else if(c.type==='bulb'){
+    const on=rd&&Math.abs(rd.I)>0.001;
+    if(on){const b=Math.min(1,Math.abs(rd.I)/0.3);ctx.shadowColor=`rgba(255,220,100,${0.5+b*0.5})`;ctx.shadowBlur=(18+b*20)/vz;}
+    line(x,cy2,x+10/vz,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,14/vz,0,Math.PI*2);
+    if(on){ctx.fillStyle=`rgba(255,220,100,${Math.min(1,Math.abs(rd.I)/0.3)*0.3+0.05})`;ctx.fill();}
+    ctx.stroke();
+    line(cx-9/vz,cy2-9/vz,cx+9/vz,cy2+9/vz); line(cx+9/vz,cy2-9/vz,cx-9/vz,cy2+9/vz);
+    line(x+w-10/vz,cy2,x+w,cy2);
+    label(cx,cy2-21/vz,`${c.value}Ω`,textC,fsb);
+    label(cx,cy2+30/vz,on?'💡 ON':'OFF',on?C.yellow:C.dim,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── MOTOR ──────
+  else if(c.type==='motor'){
+    const on=rd&&Math.abs(rd.I)>0.01;
+    if(on){ctx.shadowColor=C.teal;ctx.shadowBlur=12/vz;}
+    line(x,cy2,x+10/vz,cy2); line(x+w-10/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,16/vz,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=on?C.teal:textC;
+    ctx.font='bold '+(13/vz)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('M',cx,cy2);
+    ctx.textBaseline='alphabetic';
+    if(on){
+      const rpm=Math.round(Math.abs(rd.I)*500);
+      label(cx,cy2+30/vz,`${rpm} RPM`,C.teal,fsb);
+    } else label(cx,cy2+30/vz,'STOPPED',C.dim,fsb);
+    label(cx,cy2-22/vz,`${c.value}Ω`,textC,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── BUZZER ──────
+  else if(c.type==='buzzer'){
+    const on=rd&&Math.abs(rd.I)>0.005;
+    if(on){ctx.shadowColor=C.amber;ctx.shadowBlur=10/vz;}
+    line(x,cy2,x+10/vz,cy2); line(x+w-10/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,14/vz,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=on?C.amber:textC;
+    ctx.font=(13/vz)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🔔',cx,cy2);
+    ctx.textBaseline='alphabetic';
+    label(cx,cy2+28/vz,on?'♪ ON':'OFF',on?C.amber:C.dim,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── RELAY ──────
+  else if(c.type==='relay'){
+    // Coil side
+    ctx.beginPath(); ctx.rect(x+8/vz,y+8/vz,w-16/vz,18/vz); ctx.stroke();
+    label(cx,y+20/vz,'COIL',textC,fsb);
+    // Switch side
+    const sy2=y+h-20/vz;
+    line(x+8/vz,sy2,x+24/vz,sy2);
+    ctx.beginPath(); ctx.arc(x+24/vz,sy2,3/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    const swClosed=c.closed||(rd&&Math.abs(rd.I)>0.05);
+    if(swClosed){line(x+27/vz,sy2,x+w-24/vz,sy2);}
+    else{line(x+27/vz,sy2+2/vz,x+w-24/vz,sy2-10/vz);}
+    ctx.beginPath(); ctx.arc(x+w-24/vz,sy2,3/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    line(x+w-24/vz,sy2,x+w-8/vz,sy2);
+    dots(c,stroke);
+  }
+
+  // ────── SWITCH ──────
+  else if(c.type==='switch'||c.type==='push_btn'){
+    line(x,cy2,x+14/vz,cy2);
+    ctx.beginPath(); ctx.arc(x+14/vz,cy2,3.5/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    line(x+w-14/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(x+w-14/vz,cy2,3.5/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    if(c.closed){
+      ctx.strokeStyle=c.type==='push_btn'?C.amber:C.green;
+      line(x+17.5/vz,cy2,x+w-17.5/vz,cy2);
+    } else {
+      line(x+17.5/vz,cy2+2/vz,x+w-17.5/vz,cy2-14/vz);
+    }
+    const lc=c.closed?(c.type==='push_btn'?C.amber:C.green):C.red;
+    label(cx,cy2-20/vz,c.closed?(c.type==='push_btn'?'PRESSED':'CLOSED'):'OPEN',lc,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── SPDT ──────
+  else if(c.type==='spdt'){
+    line(x,cy2,x+14/vz,cy2);
+    ctx.beginPath(); ctx.arc(x+14/vz,cy2,3.5/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    const pos=c.pos||0;
+    const ty1=cy2-18/vz, ty2=cy2+18/vz;
+    ctx.beginPath(); ctx.arc(x+w-14/vz,ty1,3.5/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    ctx.beginPath(); ctx.arc(x+w-14/vz,ty2,3.5/vz,0,Math.PI*2); ctx.fillStyle=stroke; ctx.fill();
+    line(x+w-14/vz,ty1,x+w,ty1); line(x+w-14/vz,ty2,x+w,ty2);
+    line(x+17.5/vz,cy2,x+w-17.5/vz,pos===0?ty1:ty2);
+    label(cx,cy2-26/vz,`POS ${pos+1}`,C.amber,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── NPN / PNP TRANSISTOR ──────
+  else if(c.type==='npn'||c.type==='pnp'){
+    const flip=c.type==='pnp'?-1:1;
+    const midY=y+h/2;
+    // Base
+    line(x,y+16/vz,cx-8/vz,y+16/vz);
+    line(x,y+h-16/vz,cx-8/vz,y+h-16/vz);
+    // Vertical bar
+    line(cx-8/vz,y+8/vz,cx-8/vz,y+h-8/vz);
+    // Collector/Emitter
+    line(cx-8/vz,y+16/vz,cx+16/vz,y+8/vz);
+    line(cx-8/vz,y+h-16/vz,cx+16/vz,y+h-8/vz);
+    // Arrow on emitter
+    ctx.beginPath();
+    ctx.moveTo(cx+8/vz,y+h-10/vz); ctx.lineTo(cx+16/vz,y+h-8/vz); ctx.lineTo(cx+10/vz,y+h-2/vz);
+    ctx.fillStyle=stroke; ctx.fill();
+    // Base wire
+    line(x-8/vz,midY,cx-8/vz,midY);
+    // Collector wire to pin
+    line(cx+16/vz,y+8/vz,x+w,y+8/vz);
+    label(cx+6/vz,midY+4/vz,c.type.toUpperCase(),textC,fsb);
+    label(cx,y-8/vz,`β=${c.value}`,textC,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── VOLTMETER ──────
+  else if(c.type==='voltmeter'){
+    line(x,cy2,x+12/vz,cy2); line(x+w-12/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,18/vz,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=rd?C.amber:textC;
+    ctx.font='bold '+(13/vz)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('V',cx,cy2); ctx.textBaseline='alphabetic';
+    if(rd)label(cx,cy2+30/vz,`${rd.V.toFixed(3)}V`,C.amber,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── AMMETER ──────
+  else if(c.type==='ammeter'){
+    line(x,cy2,x+12/vz,cy2); line(x+w-12/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,18/vz,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=rd?C.blue:textC;
+    ctx.font='bold '+(13/vz)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('A',cx,cy2); ctx.textBaseline='alphabetic';
+    if(rd)label(cx,cy2+30/vz,`${(rd.I*1000).toFixed(2)}mA`,C.blue,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── OHMMETER ──────
+  else if(c.type==='ohmmeter'){
+    line(x,cy2,x+12/vz,cy2); line(x+w-12/vz,cy2,x+w,cy2);
+    ctx.beginPath(); ctx.arc(cx,cy2,18/vz,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=rd?C.purple:textC;
+    ctx.font='bold '+(12/vz)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('Ω',cx,cy2); ctx.textBaseline='alphabetic';
+    if(rd&&rd.I>0)label(cx,cy2+30/vz,`${fmtR(rd.V/rd.I)}`,C.purple,fsb);
+    else if(rd)label(cx,cy2+30/vz,'∞ Ω',C.purple,fsb);
+    dots(c,stroke);
+  }
+
+  // ────── LOGIC GATES ──────
+  else if(c.type==='and_gate'||c.type==='nand_gate'){
+    const gh=c.h||64, gw=c.w||96;
+    ctx.beginPath();
+    ctx.moveTo(x+8/vz,y+6/vz);
+    ctx.lineTo(x+gw*0.45,y+6/vz);
+    ctx.arc(x+gw*0.45,y+gh/2,gh/2-6/vz,-Math.PI/2,Math.PI/2);
+    ctx.lineTo(x+8/vz,y+gh-6/vz); ctx.closePath(); ctx.stroke();
+    // input lines
+    line(x,y+Math.round(gh/3),x+8/vz,y+Math.round(gh/3));
+    line(x,y+Math.round(2*gh/3),x+8/vz,y+Math.round(2*gh/3));
+    line(x+gw-8/vz,y+gh/2,x+gw,y+gh/2);
+    if(c.type==='nand_gate'){ctx.beginPath();ctx.arc(x+gw-6/vz,y+gh/2,5/vz,0,Math.PI*2);ctx.stroke();}
+    label(cx-4/vz,cy+4/vz,c.type==='and_gate'?'&':'&̄',textC,fs);
+    dots(c,stroke);
+  }
+  else if(c.type==='or_gate'){
+    const gh=c.h||64, gw=c.w||96;
+    ctx.beginPath();
+    ctx.moveTo(x+8/vz,y+6/vz);
+    ctx.quadraticCurveTo(x+gw*0.35,y+6/vz,x+gw-8/vz,y+gh/2);
+    ctx.quadraticCurveTo(x+gw*0.35,y+gh-6/vz,x+8/vz,y+gh-6/vz);
+    ctx.quadraticCurveTo(x+gw*0.2,y+gh/2,x+8/vz,y+6/vz);
+    ctx.stroke();
+    line(x,y+Math.round(gh/3),x+14/vz,y+Math.round(gh/3));
+    line(x,y+Math.round(2*gh/3),x+14/vz,y+Math.round(2*gh/3));
+    line(x+gw-8/vz,y+gh/2,x+gw,y+gh/2);
+    label(cx-4/vz,cy+4/vz,'≥1',textC,fs);
+    dots(c,stroke);
+  }
+  else if(c.type==='not_gate'){
+    const gh=c.h||48, gw=c.w||80;
+    ctx.beginPath();
+    ctx.moveTo(x+8/vz,y+6/vz); ctx.lineTo(x+gw-12/vz,y+gh/2); ctx.lineTo(x+8/vz,y+gh-6/vz); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x+gw-8/vz,y+gh/2,5/vz,0,Math.PI*2); ctx.stroke();
+    line(x,y+gh/2,x+8/vz,y+gh/2); line(x+gw-3/vz,y+gh/2,x+gw,y+gh/2);
+    label(cx-4/vz,cy+4/vz,'1',textC,fs);
+    dots(c,stroke);
+  }
+
+  ctx.restore();
+}
+
+// ── Drawing helpers ──
+function line(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function lw(w){ctx.lineWidth=w;}
+function dot(x,y,col){ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,3.5/vz,0,Math.PI*2);ctx.fill();ctx.restore();}
+function dots(c,col){getTerminals(c).forEach(t=>dot(t.x,t.y,col));}
+function label(x,y,text,color,font){
+  ctx.save();ctx.fillStyle=color;ctx.font=font||'11px sans-serif';
+  ctx.textAlign='center';ctx.shadowBlur=0;ctx.fillText(text,x,y);ctx.restore();
+}
+function ledColor(col){
+  return{red:C.red,green:C.green,blue:C.blue,yellow:C.yellow,white:'#e8e6de',orange:C.orange}[col]||C.red;
+}
+function fmtR(r){
+  if(r>=1000000)return`${(r/1000000).toFixed(1)}MΩ`;
+  if(r>=1000)return`${(r/1000).toFixed(1)}kΩ`;
+  return`${r}Ω`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ANIMATE (for wire current animation)
+// ═══════════════════════════════════════════════════════
+let animFrame=null;
+function startAnim(){
+  if(animFrame)return;
+  function loop(){
+    if(simResults&&components.some(c=>c.type==='wire'&&simResults.cd[c.id]&&Math.abs(simResults.cd[c.id].I)>0.01)){
+      draw(); animFrame=requestAnimationFrame(loop);
+    } else {animFrame=null;}
+  }
+  animFrame=requestAnimationFrame(loop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  HIT TESTING
+// ═══════════════════════════════════════════════════════
+function hitTest(c,wx,wy){
+  if(c.type==='wire'){
+    const dx=c.x2-c.x,dy=c.y2-c.y,len2=dx*dx+dy*dy;
+    if(len2===0)return Math.hypot(wx-c.x,wy-c.y)<12/vz;
+    let t=((wx-c.x)*dx+(wy-c.y)*dy)/len2;
+    t=Math.max(0,Math.min(1,t));
+    return Math.hypot(wx-c.x-t*dx,wy-c.y-t*dy)<12/vz;
+  }
+  if(c.type==='ground'||c.type==='vcc')return Math.hypot(wx-c.x,wy-c.y)<22/vz;
+  const pad=8/vz;
+  return wx>=c.x-pad&&wx<=c.x+(c.w||96)+pad&&wy>=c.y-pad&&wy<=c.y+(c.h||48)+pad;
+}
+
+// ═══════════════════════════════════════════════════════
+//  COMPONENT FACTORY
+// ═══════════════════════════════════════════════════════
+function makeComp(type,wx,wy){
+  const def=defFor(type);
+  if(type==='wire')return null;
+  const base={id:nextId++,type,x:snapW(wx)-(def.w||0)/2,y:snapW(wy)-(def.h||0)/2,w:def.w||0,h:def.h||0};
+  if(def.value!==undefined)base.value=def.value;
+  if(def.unit!==undefined)base.unit=def.unit;
+  if(def.closed!==undefined)base.closed=def.closed;
+  if(def.freq!==undefined)base.freq=def.freq;
+  if(def.wiper!==undefined)base.wiper=def.wiper;
+  if(def.pos!==undefined)base.pos=def.pos;
+  if(def.colour!==undefined)base.colour=def.colour;
+  if(def.rpm!==undefined)base.rpm=def.rpm;
+  return base;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UNDO
+// ═══════════════════════════════════════════════════════
+function saveUndo(){
+  undoStack.push(JSON.stringify(components));
+  if(undoStack.length>50)undoStack.shift();
+}
+function undoAction(){
+  if(undoStack.length===0){toast('Nothing to undo');return;}
+  components=JSON.parse(undoStack.pop());
+  selectedComp=null; simResults=null; showProps(null); draw(); scheduleAutoRun();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ZOOM + PAN
+// ═══════════════════════════════════════════════════════
+function zoom(factor,cx,cy){
+  const nz=Math.max(0.2,Math.min(4,vz*factor));
+  vx=cx-(cx-vx)*(nz/vz); vy=cy-(cy-vy)*(nz/vz); vz=nz;
+  document.getElementById('zoom-label').textContent=Math.round(vz*100)+'%';
+  drawGrid(); draw();
+}
+function resetZoom(){
+  if(components.length===0){vx=W/2-GRID*4;vy=H/2-GRID*4;vz=1;}
+  else{
+    let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+    components.forEach(c=>{
+      const terms=getTerminals(c);
+      terms.forEach(t=>{mnx=Math.min(mnx,t.x);mny=Math.min(mny,t.y);mxx=Math.max(mxx,t.x);mxy=Math.max(mxy,t.y);});
+    });
+    const pw=mxx-mnx+GRID*4, ph=mxy-mny+GRID*4;
+    vz=Math.min(4,Math.max(0.2,Math.min((W-40)/pw,(H-40)/ph)));
+    vx=W/2-(mnx+pw/2)*vz; vy=H/2-(mny+ph/2)*vz;
+  }
+  document.getElementById('zoom-label').textContent=Math.round(vz*100)+'%';
+  drawGrid(); draw();
+}
+
+// ── Mouse wheel ──
+canvasWrap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=mainCv.getBoundingClientRect();
+  zoom(e.deltaY<0?1.1:1/1.1,e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
+
+// ═══════════════════════════════════════════════════════
+//  TOUCH EVENTS  (unified pointer handling)
+// ═══════════════════════════════════════════════════════
+function getTouchList(e){return Array.from(e.touches);}
+function midpoint(t1,t2){return{x:(t1.clientX+t2.clientX)/2,y:(t1.clientY+t2.clientY)/2};}
+function pinchDist(t1,t2){return Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);}
+
+mainCv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const tl=getTouchList(e);
+  const r=mainCv.getBoundingClientRect();
+
+  if(tl.length===2){
+    // Pinch zoom / two-finger pan
+    isPanning=true; isDraggingComp=false; wireStart=null;
+    lastPinchDist=pinchDist(tl[0],tl[1]);
+    lastPinchMid=midpoint(tl[0],tl[1]);
+    panStart={x:lastPinchMid.x-r.left,y:lastPinchMid.y-r.top};
+    panOrigin={x:vx,y:vy};
+    return;
+  }
+  isPanning=false;
+  touchStartPos={x:tl[0].clientX-r.left,y:tl[0].clientY-r.top};
+  touchStartTime=Date.now(); touchMoved=false;
+  wirePreviewEnd=screenToWorld(touchStartPos.x,touchStartPos.y);
+  wirePreviewEnd={x:snapW(wirePreviewEnd.x),y:snapW(wirePreviewEnd.y)};
+
+  // Check if touching a component (for drag in select mode)
+  if(mode==='select'){
+    const wp=screenToWorld(touchStartPos.x,touchStartPos.y);
+    for(let i=components.length-1;i>=0;i--){
+      if(hitTest(components[i],wp.x,wp.y)){
+        selectedComp=components[i];
+        isDraggingComp=true;
+        dragOffset={x:wp.x-(selectedComp.type==='wire'?selectedComp.x:selectedComp.x),
+                    y:wp.y-(selectedComp.type==='wire'?selectedComp.y:selectedComp.y)};
+        showProps(selectedComp); draw(); break;
+      }
+    }
+    if(!isDraggingComp){
+      // pan with single finger in select mode
+      isPanning=true;
+      panStart=touchStartPos;
+      panOrigin={x:vx,y:vy};
+    }
+  }
+},{passive:false});
+
+mainCv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const tl=getTouchList(e);
+  const r=mainCv.getBoundingClientRect();
+
+  if(tl.length===2){
+    const newDist=pinchDist(tl[0],tl[1]);
+    const newMid=midpoint(tl[0],tl[1]);
+    const midX=newMid.x-r.left, midY=newMid.y-r.top;
+    zoom(newDist/lastPinchDist,midX,midY);
+    // pan component
+    vx+=(midX-(lastPinchMid.x-r.left));
+    vy+=(midY-(lastPinchMid.y-r.top));
+    lastPinchDist=newDist; lastPinchMid=newMid;
+    drawGrid(); draw(); return;
+  }
+
+  const curPos={x:tl[0].clientX-r.left,y:tl[0].clientY-r.top};
+  const wp=screenToWorld(curPos.x,curPos.y);
+  wirePreviewEnd={x:snapW(wp.x),y:snapW(wp.y)};
+  touchMoved=Math.hypot(curPos.x-(touchStartPos?.x||0),curPos.y-(touchStartPos?.y||0))>8;
+
+  if(isPanning&&!isDraggingComp){
+    vx=panOrigin.x+(curPos.x-panStart.x);
+    vy=panOrigin.y+(curPos.y-panStart.y);
+    drawGrid();
+  } else if(isDraggingComp&&selectedComp&&mode==='select'){
+    if(selectedComp.type==='wire'){
+      // move both endpoints
+      const dx=wp.x-dragOffset.x, dy=wp.y-dragOffset.y;
+      // handled differently — store midpoint offset
+      selectedComp.x+=wp.x-dragOffset.x-selectedComp.x; // simplify: just snap
+    } else {
+      selectedComp.x=snapW(wp.x-dragOffset.x+(selectedComp.w||0)/2)-(selectedComp.w||0)/2;
+      selectedComp.y=snapW(wp.y-dragOffset.y+(selectedComp.h||0)/2)-(selectedComp.h||0)/2;
+    }
+    dragOffset={x:wp.x,y:wp.y};
+    simResults=null; scheduleAutoRun();
+  }
+  draw();
+},{passive:false});
+
+mainCv.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const r=mainCv.getBoundingClientRect();
+  if(isPanning&&!isDraggingComp){isPanning=false; draw(); return;}
+  isDraggingComp=false; isPanning=false;
+  if(!touchMoved&&touchStartPos&&Date.now()-touchStartTime<600){
+    handleTap(touchStartPos);
+  }
+  touchStartPos=null;
+},{passive:false});
+
+// ═══════════════════════════════════════════════════════
+//  MOUSE EVENTS
+// ═══════════════════════════════════════════════════════
+let mouseDown=false, mouseButton=0, mouseDragComp=false;
+
+mainCv.addEventListener('mousedown',e=>{
+  mouseDown=true; mouseButton=e.button;
+  const r=mainCv.getBoundingClientRect();
+  const pos={x:e.clientX-r.left,y:e.clientY-r.top};
+  const wp=screenToWorld(pos.x,pos.y);
+  if(e.button===1||spaceDown){isPanning=true;panStart=pos;panOrigin={x:vx,y:vy};return;}
+  if(mode==='select'){
+    for(let i=components.length-1;i>=0;i--){
+      if(hitTest(components[i],wp.x,wp.y)){
+        selectedComp=components[i]; isDraggingComp=true;
+        dragOffset={x:wp.x-selectedComp.x,y:wp.y-selectedComp.y};
+        saveUndo(); showProps(selectedComp); draw(); return;
+      }
+    }
+    selectedComp=null; showProps(null); isPanning=true; panStart=pos; panOrigin={x:vx,y:vy};
+    draw();
+  }
+});
+
+mainCv.addEventListener('mousemove',e=>{
+  const r=mainCv.getBoundingClientRect();
+  const pos={x:e.clientX-r.left,y:e.clientY-r.top};
+  const wp=screenToWorld(pos.x,pos.y);
+  wirePreviewEnd={x:snapW(wp.x),y:snapW(wp.y)};
+  if(isPanning){vx=panOrigin.x+(pos.x-panStart.x);vy=panOrigin.y+(pos.y-panStart.y);drawGrid();}
+  else if(isDraggingComp&&selectedComp&&mode==='select'){
+    if(selectedComp.type!=='wire'){
+      selectedComp.x=snapW(wp.x-dragOffset.x+(selectedComp.w||0)/2)-(selectedComp.w||0)/2;
+      selectedComp.y=snapW(wp.y-dragOffset.y+(selectedComp.h||0)/2)-(selectedComp.h||0)/2;
+    }
+    simResults=null; scheduleAutoRun();
+  }
+  mainCv.style.cursor=isPanning?'grabbing':isDraggingComp?'move':mode==='select'?'default':'crosshair';
+  draw();
+});
+
+mainCv.addEventListener('mouseup',e=>{
+  if(isDraggingComp){isDraggingComp=false;}
+  if(isPanning){isPanning=false; mainCv.style.cursor=mode==='select'?'default':'crosshair';}
+  mouseDown=false;
+});
+
+mainCv.addEventListener('click',e=>{
+  if(isPanning||isDraggingComp)return;
+  const r=mainCv.getBoundingClientRect();
+  handleTap({x:e.clientX-r.left,y:e.clientY-r.top});
+});
+
+mainCv.addEventListener('contextmenu',e=>{e.preventDefault();wireStart=null;draw();});
+mainCv.addEventListener('dblclick',e=>{
+  // double-click = toggle switch / open properties
+  const r=mainCv.getBoundingClientRect();
+  const wp=screenToWorld(e.clientX-r.left,e.clientY-r.top);
+  for(let i=components.length-1;i>=0;i--){
+    const c=components[i];
+    if(hitTest(c,wp.x,wp.y)){
+      if(c.type==='switch'||c.type==='push_btn'){c.closed=!c.closed;simResults=null;scheduleAutoRun();draw();}
+      else if(c.type==='relay'){c.closed=!c.closed;simResults=null;scheduleAutoRun();draw();}
+      break;
+    }
+  }
+});
+
+// ── Space to pan ──
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+  if(e.code==='Space'){spaceDown=true;mainCv.style.cursor='grab';e.preventDefault();}
+  if(e.key==='Delete'||e.key==='Backspace'){if(selectedComp){saveUndo();deleteComp(selectedComp.id);}}
+  if(e.key==='Escape'){wireStart=null;selectedComp=null;showProps(null);isPanning=false;isDraggingComp=false;draw();}
+  if(e.key==='s'&&!e.ctrlKey&&!e.metaKey)setMode('select');
+  if(e.key==='p')setMode('place');
+  if(e.key==='w')selectTool('wire');
+  if(e.key==='Enter')runSimulation();
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoAction();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCircuit();}
+  if(e.key==='='||e.key==='+'){zoom(1.15,W/2,H/2);}
+  if(e.key==='-'){zoom(1/1.15,W/2,H/2);}
+  if(e.key==='0'){resetZoom();}
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='Space'){spaceDown=false;mainCv.style.cursor=mode==='select'?'default':'crosshair';}
+});
+
+// ═══════════════════════════════════════════════════════
+//  TAP HANDLER
+// ═══════════════════════════════════════════════════════
+function handleTap(screenPos){
+  const wp=screenToWorld(screenPos.x,screenPos.y);
+  const sx=snapW(wp.x), sy=snapW(wp.y);
+
+  if(mode==='select'){
+    selectedComp=null;
+    for(let i=components.length-1;i>=0;i--){
+      if(hitTest(components[i],wp.x,wp.y)){
+        selectedComp=components[i];
+        if(selectedComp.type==='switch'||selectedComp.type==='push_btn'){
+          saveUndo(); selectedComp.closed=!selectedComp.closed; simResults=null; scheduleAutoRun();
+        }
+        showProps(selectedComp); draw(); return;
+      }
+    }
+    showProps(null); draw(); return;
+  }
+
+  if(selectedTool==='wire'){
+    if(!wireStart){
+      wireStart={x:sx,y:sy};
+      setInfo('Tap end point to complete wire · Right-click or Escape to cancel');
+    } else {
+      if(sx===wireStart.x&&sy===wireStart.y){wireStart=null;draw();return;}
+      saveUndo();
+      components.push({id:nextId++,type:'wire',x:wireStart.x,y:wireStart.y,x2:sx,y2:sy});
+      wireStart=null; simResults=null; scheduleAutoRun();
+      setInfo('Wire placed. Tap to start another.');
+      draw();
+    }
+    return;
+  }
+
+  const c=makeComp(selectedTool,wp.x,wp.y);
+  if(c){saveUndo();components.push(c);simResults=null;scheduleAutoRun();draw();}
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODE + TOOL SELECTION
+// ═══════════════════════════════════════════════════════
+function setMode(m){
+  mode=m; wireStart=null;
+  document.getElementById('btn-select').classList.toggle('active',m==='select');
+  document.getElementById('btn-place').classList.toggle('active',m==='place');
+  mainCv.style.cursor=m==='select'?'default':'crosshair';
+  if(m==='select')setInfo('Tap to select · Drag to move · Double-tap switch to toggle · Pinch to zoom');
+  draw();
+}
+function selectTool(t){
+  selectedTool=t; wireStart=null;
+  document.querySelectorAll('[data-type]').forEach(el=>el.classList.toggle('active',el.dataset.type===t));
+  document.getElementById('btn-wire').classList.toggle('active',t==='wire');
+  if(mode!=='place')setMode('place');
+  setInfo(t==='wire'?'Tap start point of wire':'Tap canvas to place component · Pinch to zoom');
+  draw();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROPERTIES PANEL
+// ═══════════════════════════════════════════════════════
+function showProps(c){
+  const p=document.getElementById('props-panel');
+  if(!c){p.innerHTML='<span style="font-size:12px;color:var(--t3)">Select a component to edit its properties</span>';return;}
+
+  let h=`<span style="font-size:12px;color:var(--t2);font-weight:600;flex-shrink:0">${defFor(c.type).label||c.type}</span>`;
+
+  if(c.value!==undefined){
+    const def=defFor(c.type);
+    h+=`<div class="pg"><div class="pl">${def.desc||'Value'} (${def.unit||''})</div>
+    <input class="pi" type="number" value="${c.value}" step="any" onchange="updProp(${c.id},'value',+this.value)"></div>`;
+  }
+  if(c.type==='switch'||c.type==='push_btn'){
+    h+=`<div class="pg"><div class="pl">State</div>
+    <select class="ps" onchange="updProp(${c.id},'closed',this.value==='true')">
+      <option value="true"${c.closed?' selected':''}>Closed</option>
+      <option value="false"${!c.closed?' selected':''}>Open</option>
+    </select></div>`;
+  }
+  if(c.type==='led'){
+    h+=`<div class="pg"><div class="pl">Colour</div>
+    <select class="ps" onchange="updProp(${c.id},'colour',this.value)">
+      ${['red','green','blue','yellow','white','orange'].map(col=>`<option value="${col}"${(c.colour||'red')===col?' selected':''}>${col}</option>`).join('')}
+    </select></div>`;
+  }
+  if(c.type==='ac_source'){
+    h+=`<div class="pg"><div class="pl">Frequency (Hz)</div>
+    <input class="pi" type="number" value="${c.freq||50}" min="1" max="10000" onchange="updProp(${c.id},'freq',+this.value)"></div>`;
+  }
+  if(c.type==='potentiometer'){
+    h+=`<div class="pg"><div class="pl">Wiper position (%)</div>
+    <input class="pi" type="range" min="0" max="100" value="${c.wiper||50}" 
+      oninput="updProp(${c.id},'wiper',+this.value)"></div>`;
+  }
+  if(c.type==='spdt'){
+    h+=`<div class="pg"><div class="pl">Position</div>
+    <select class="ps" onchange="updProp(${c.id},'pos',+this.value)">
+      <option value="0"${(c.pos||0)===0?' selected':''}>Position 1</option>
+      <option value="1"${(c.pos||0)===1?' selected':''}>Position 2</option>
+    </select></div>`;
+  }
+
+  const rd=simResults?simResults.cd[c.id]:null;
+  if(rd){
+    h+=`<div class="prop-readout">${rd.V.toFixed(3)}V · ${(rd.I*1000).toFixed(2)}mA · ${rd.P.toFixed(3)}W</div>`;
+  }
+
+  h+=`<button class="del-btn" onclick="saveUndo();deleteComp(${c.id})">✕ Delete</button>`;
+  p.innerHTML=h;
+}
+function updProp(id,key,val){
+  const c=components.find(c=>c.id===id);
+  if(c){c[key]=val;simResults=null;draw();scheduleAutoRun();}
+}
+function deleteComp(id){
+  components=components.filter(c=>c.id!==id);
+  selectedComp=null; simResults=null; showProps(null); draw(); scheduleAutoRun();
+}
+
+// ═══════════════════════════════════════════════════════
+//  AUTO-RUN
+// ═══════════════════════════════════════════════════════
+function toggleAutoRun(){
+  autoRun=!autoRun;
+  document.getElementById('auto-btn').classList.toggle('active',autoRun);
+  if(autoRun){runSimulation();toast('Auto-run enabled');}else{toast('Auto-run disabled');}
+}
+function scheduleAutoRun(){
+  if(!autoRun)return;
+  clearTimeout(autoRunTimer);
+  autoRunTimer=setTimeout(runSimulation,400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIMULATION ENGINE  (improved MNA-inspired solver)
+// ═══════════════════════════════════════════════════════
+function runSimulation(){
+  const diag=[], results=[], cd={};
+
+  // ── Build node map via union-find ──
+  // Each connected junction gets a node number
+  // Wires and closed switches merge nodes
+  const nodeId={};
+  let nodeCount=0;
+  function getNode(x,y){
+    const k=`${x},${y}`;
+    if(nodeId[k]===undefined)nodeId[k]=nodeCount++;
+    return nodeId[k];
+  }
+  function mergeNodes(a,b){
+    // After getting all node IDs, replace all references of b with a
+    for(const k in nodeId){if(nodeId[k]===b)nodeId[k]=a;}
+  }
+
+  // Pass 1: assign terminal nodes
+  components.forEach(c=>{
+    const terms=getTerminals(c);
+    terms.forEach(t=>getNode(t.x,t.y));
+  });
+
+  // Pass 2: merge nodes connected by wires / closed switches
+  components.forEach(c=>{
+    if(c.type==='wire'||(c.type==='switch'&&c.closed)||(c.type==='push_btn'&&c.closed)){
+      const t=getTerminals(c);
+      const na=getNode(t[0].x,t[0].y), nb=getNode(t[1].x,t[1].y);
+      if(na!==nb)mergeNodes(Math.min(na,nb),Math.max(na,nb));
+    }
+  });
+
+  // Re-number nodes 0..N-1
+  const nodeMap={}; let nc=0;
+  const allNodeIds=[...new Set(Object.values(nodeId))].sort((a,b)=>a-b);
+  allNodeIds.forEach(id=>nodeMap[id]=nc++);
+  const N=nc;
+
+  function nodeOf(c,termIdx){
+    const t=getTerminals(c)[termIdx];
+    const k=`${t.x},${t.y}`;
+    return nodeMap[nodeId[k]]??0;
+  }
+
+  // ── Find batteries and ground ──
+  const batteries=components.filter(c=>c.type==='battery'||c.type==='ac_source'||c.type==='vcc');
+  const grounds=components.filter(c=>c.type==='ground');
+  const resistive=components.filter(c=>['resistor','bulb','motor','buzzer','capacitor','inductor',
+    'voltmeter','ammeter','ohmmeter','led','diode','zener','potentiometer',
+    'and_gate','or_gate','not_gate','nand_gate'].includes(c.type));
+  const openSwitches=components.filter(c=>(c.type==='switch'&&!c.closed)||(c.type==='push_btn'&&!c.closed));
+
+  if(batteries.length===0){
+    diag.push({t:'err',msg:'No voltage source. Add a Battery or VCC.'});
+    showResults(results,diag,cd); return;
+  }
+
+  // ── Detect open circuit ──
+  // If any open switch is in the path, we need to detect it
+  // Simplified: any open switch = possible break
+  const hasOpenSW=openSwitches.length>0;
+
+  // ── Simple MNA for series/parallel DC circuits ──
+  // Build equivalent circuit: identify parallel branches
+  // Group components by their node pairs
+  const branches=[];
+  resistive.forEach(c=>{
+    const n0=nodeOf(c,0), n1=getTerminals(c).length>1?nodeOf(c,1):n0;
+    if(n0===n1)return; // floating
+    let R=1e9; // default open
+    let Vf=0;
+    switch(c.type){
+      case'resistor': R=c.value||100; break;
+      case'bulb':     R=c.value||60; break;
+      case'motor':    R=c.value||10; break;
+      case'buzzer':   R=c.value||8; break;
+      case'inductor': R=0.1; break; // DC short
+      case'capacitor':R=1e9; break; // DC open
+      case'led':      R=60; Vf=c.value||2; break;
+      case'diode':    R=0.5; Vf=c.value||0.7; break;
+      case'zener':    R=2; Vf=c.value||5.1; break;
+      case'potentiometer':R=c.value*(c.wiper||50)/100||1; break;
+      case'voltmeter':R=1e7; break;
+      case'ammeter':  R=0.001; break;
+      case'ohmmeter': R=1e6; break;
+      default: R=100;
+    }
+    branches.push({c,n0,n1,R,Vf});
+  });
+
+  batteries.forEach(c=>{
+    const n0=nodeOf(c,0), n1=getTerminals(c).length>1?nodeOf(c,1):0;
+    branches.push({c,n0,n1,R:0.1,V:c.value||9,isBattery:true});
+  });
+
+  // ── Ground reference ──
+  let gndNode=0;
+  if(grounds.length>0){
+    const gt=getTerminals(grounds[0])[0];
+    const gk=`${gt.x},${gt.y}`;
+    gndNode=nodeMap[nodeId[gk]]??0;
+  }
+
+  // ── Solve using nodal analysis (simplified for educational circuits) ──
+  // For typical series circuits, walk the loop
+  // Find battery branches
+  const batBranches=branches.filter(b=>b.isBattery);
+  const resBranches=branches.filter(b=>!b.isBattery);
+
+  // Total voltage
+  let Vsource=0;
+  batBranches.forEach(b=>Vsource+=b.V||b.c.value||9);
+
+  // Detect if circuit is closed (simplified: check connectivity)
+  // Use union-find to see if battery + and - are in same connected graph
+  let circuitOpen=hasOpenSW;
+
+  // Total series resistance
+  let Rseries=0, VfTotal=0;
+  resBranches.forEach(b=>{if(b.R<1e8){Rseries+=b.R;VfTotal+=b.Vf||0;}});
+  if(Rseries<0.001)Rseries=0.01; // wire resistance
+
+  const Vdrive=Math.max(0,Vsource-VfTotal);
+  const Itotal=circuitOpen?0:Vdrive/Rseries;
+  const Ptotal=Vsource*Itotal;
+
+  // ── Per-component data ──
+  resBranches.forEach(b=>{
+    const I=b.R<1e8?Itotal:0;
+    const V=I*(b.R-0)+(b.Vf||0)*Math.sign(I);
+    const P=Math.abs(V*I);
+    cd[b.c.id]={I,V,P};
+  });
+  batBranches.forEach(b=>{
+    cd[b.c.id]={I:Itotal,V:b.V||b.c.value||9,P:(b.V||9)*Itotal};
+  });
+  components.filter(c=>c.type==='wire').forEach(c=>{
+    cd[c.id]={I:Itotal,V:0,P:0};
+  });
+
+  // ── Results ──
+  results.push({label:'Source voltage',val:`${Vsource.toFixed(3)} V`,sub:`${batBranches.length} source(s)`});
+  results.push({label:'Series resistance',val:fmtR(Rseries),sub:'Equivalent R'});
+  if(VfTotal>0)results.push({label:'Forward voltage drops',val:`${VfTotal.toFixed(2)} V`,sub:'Diodes / LEDs'});
+
+  if(circuitOpen){
+    results.push({label:'Circuit current',val:'0 A',sub:'Circuit is OPEN',cls:'warn'});
+    diag.push({t:'warn',msg:'Circuit is open (switch open or incomplete wiring).'});
+  } else {
+    const cls=Itotal>2?'err':Itotal>1?'warn':'';
+    results.push({label:'Circuit current',val:`${Itotal.toFixed(4)} A`,sub:`${(Itotal*1000).toFixed(2)} mA`,cls});
+    results.push({label:'Total power',val:`${Ptotal.toFixed(3)} W`,sub:'P = V × I'});
+    if(Itotal>2)  diag.push({t:'err', msg:`Dangerous current: ${Itotal.toFixed(2)}A! Risk of fire/damage.`});
+    if(Itotal>1)  diag.push({t:'warn',msg:`High current: ${Itotal.toFixed(2)}A. Verify ratings.`});
+    if(Itotal<0.00001&&resBranches.length>0)diag.push({t:'warn',msg:'Near-zero current. Check all connections.'});
+  }
+
+  // ── Per-component diagnostics ──
+  resBranches.forEach(b=>{
+    const c=b.c, d=cd[c.id];
+    if(!d)return;
+    const def=defFor(c.type);
+    const lbl=`${def.label} (${c.value||''}${def.unit||''})`;
+    const cls=d.I>0.001&&(c.type==='bulb'||c.type==='led'||c.type==='motor')?'ok':'';
+    results.push({label:lbl,val:`${d.V.toFixed(3)}V / ${(d.I*1000).toFixed(2)}mA`,sub:`${d.P.toFixed(4)}W`,cls});
+
+    if(c.type==='led'&&d.I>0.03) diag.push({t:'warn',msg:`LED current ${(d.I*1000).toFixed(0)}mA is high. Add current-limiting resistor.`});
+    if(c.type==='resistor'&&d.P>0.25) diag.push({t:'warn',msg:`Resistor ${fmtR(c.value)} dissipates ${d.P.toFixed(2)}W. Use ≥${Math.ceil(d.P/0.25)*0.25}W rating.`});
+    if(c.type==='capacitor') diag.push({t:'info',msg:'Capacitor: DC steady-state = open circuit (infinite impedance).'});
+    if(c.type==='zener'&&d.V>c.value) diag.push({t:'info',msg:`Zener in breakdown: regulating at ${c.value}V.`});
+    if(c.type==='motor'&&d.I>0.01){const rpm=Math.round(d.I*500);diag.push({t:'ok',msg:`Motor running at ~${rpm} RPM.`});}
+    if(c.type==='bulb'&&d.I>0.001) diag.push({t:'ok',msg:`Bulb lit: ${(d.I*1000).toFixed(1)}mA · ${d.P.toFixed(3)}W`});
+    if(c.type==='led'&&d.I>0.002)  diag.push({t:'ok',msg:`LED ON: ${(d.I*1000).toFixed(1)}mA flowing.`});
+  });
+
+  if(grounds.length===0) diag.push({t:'info',msg:'No ground reference. Circuit still works but add GND for clarity.'});
+  if(batBranches.length>1) diag.push({t:'info',msg:`${batBranches.length} sources in circuit. Ensure correct polarity.`});
+  if(diag.length===0) diag.push({t:'ok',msg:'Circuit looks good! No issues detected.'});
+
+  simResults={results,cd};
+  showResults(results,diag,cd);
+  draw(); startAnim();
+}
+
+function showResults(results,diag,cd){
+  const rs=document.getElementById('results-scroll');
+  rs.innerHTML=results.map(r=>`
+    <div class="rc ${r.cls||''}">
+      <div class="rl">${r.label}</div>
+      <div class="rv">${r.val}</div>
+      ${r.sub?`<div class="rs">${r.sub}</div>`:''}
+    </div>`).join('');
+
+  const di=document.getElementById('diag-items');
+  di.innerHTML=diag.map(d=>`<div class="di di-${d.t}">${d.msg}</div>`).join('');
+
+  // Mobile bottom sheet
+  document.getElementById('bs-results').innerHTML=rs.innerHTML;
+  document.getElementById('bs-diag').innerHTML=`<div class="dh" style="margin-top:12px">Diagnosis</div>`+di.innerHTML;
+  document.getElementById('bottom-sheet-btn').style.display='flex';
+
+  const hasErr=diag.some(d=>d.t==='err'), hasWarn=diag.some(d=>d.t==='warn');
+  const cls=hasErr?'chip-err':hasWarn?'chip-warn':'chip-ok';
+  const lbl=hasErr?'Errors':hasWarn?'Warnings':'All good';
+  document.getElementById('info-chip').className='chip '+cls;
+  document.getElementById('info-chip').textContent=lbl;
+  document.getElementById('info-text').textContent='Simulation complete';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SAVE / LOAD / EXPORT
+// ═══════════════════════════════════════════════════════
+function saveCircuit(){
+  const data=JSON.stringify({v:2,components,nextId},null,2);
+  localStorage.setItem('circuit_sim_save',data);
+  toast('Circuit saved to browser storage');
+}
+function loadCircuit(){
+  const data=localStorage.getItem('circuit_sim_save');
+  if(!data){toast('No saved circuit found');return;}
+  try{
+    const parsed=JSON.parse(data);
+    components=parsed.components||[];
+    nextId=parsed.nextId||components.length+1;
+    selectedComp=null; simResults=null;
+    showProps(null); draw(); toast('Circuit loaded');
+  }catch(e){toast('Error loading circuit');}
+}
+function exportJSON(){
+  const data=JSON.stringify({v:2,components,nextId},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='circuit.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('JSON exported');
+}
+function importJSONFile(){
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const parsed=JSON.parse(ev.target.result);
+        components=parsed.components||[];
+        nextId=parsed.nextId||components.length+1;
+        selectedComp=null; simResults=null;
+        showProps(null); resetZoom(); toast('Circuit imported');
+      }catch(err){toast('Error reading file');}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+function exportPNG(){
+  // Render to offscreen canvas
+  const padding=GRID*2;
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+  if(components.length>0){
+    components.forEach(c=>{
+      getTerminals(c).forEach(t=>{mnx=Math.min(mnx,t.x);mny=Math.min(mny,t.y);mxx=Math.max(mxx,t.x);mxy=Math.max(mxy,t.y);});
+    });
+  } else {mnx=0;mny=0;mxx=400;mxy=300;}
+  const cw=mxx-mnx+padding*2, ch=mxy-mny+padding*2;
+  const dpr=2;
+  const oc=document.createElement('canvas');
+  oc.width=cw*dpr; oc.height=ch*dpr;
+  const oc2=oc.getContext('2d');
+  oc2.setTransform(dpr,0,0,dpr,0,0);
+  oc2.fillStyle='#0d1117'; oc2.fillRect(0,0,cw,ch);
+  // save real transform, apply export transform
+  const svx=vx,svy=vy,svz=vz;
+  vx=padding-mnx; vy=padding-mny; vz=1;
+  const realCtx=ctx;
+  // draw to oc2 by temporarily swapping
+  const prevCtx=ctx;
+  // hack: draw using oc2
+  oc2.save();
+  oc2.translate(padding-mnx,padding-mny);
+  components.filter(c=>c.type==='wire').forEach(c=>{
+    oc2.save(); oc2.strokeStyle='#8b949e'; oc2.lineWidth=1.5; oc2.lineCap='round';
+    oc2.beginPath(); oc2.moveTo(c.x,c.y); oc2.lineTo(c.x2,c.y2); oc2.stroke(); oc2.restore();
+  });
+  oc2.restore();
+  vx=svx; vy=svy; vz=svz;
+  draw();
+  // Use actual canvas content at current view
+  const exp=document.createElement('canvas');
+  exp.width=W*dpr; exp.height=H*dpr;
+  const ectx=exp.getContext('2d');
+  ectx.drawImage(mainCv,0,0);
+  exp.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='circuit.png'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('PNG exported');
+  });
+}
+
+// ── Load from file (toolbar button) ──
+function loadCircuit(){
+  showModal(`
+    <div class="modal-title">Load Circuit</div>
+    <div class="modal-row">
+      <div class="modal-label">Source</div>
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <button class="mbtn mbtn-ok" onclick="closeModal();importJSONFile()">📂 Import from JSON file</button>
+        <button class="mbtn mbtn-ok" onclick="closeModal();loadFromStorage()">💾 Load from browser storage</button>
+      </div>
+    </div>
+    <div class="modal-btns"><button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button></div>
+  `);
+}
+function loadFromStorage(){
+  const data=localStorage.getItem('circuit_sim_save');
+  if(!data){toast('No saved circuit found');return;}
+  try{
+    const parsed=JSON.parse(data);
+    components=parsed.components||[];
+    nextId=parsed.nextId||components.length+1;
+    selectedComp=null; simResults=null;
+    showProps(null); resetZoom(); toast('Circuit loaded');
+  }catch(e){toast('Error loading circuit');}
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════
+function showModal(html){
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+function showClearConfirm(){
+  showModal(`
+    <div class="modal-title">Clear Canvas</div>
+    <p style="color:var(--t2);font-size:13px;line-height:1.5">This will remove all components and wires. This cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="mbtn mbtn-del" onclick="closeModal();clearAll()">Clear Everything</button>
+    </div>
+  `);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOTTOM SHEET (mobile)
+// ═══════════════════════════════════════════════════════
+function toggleBottomSheet(){
+  document.getElementById('bottom-sheet').classList.toggle('open');
+}
+document.getElementById('bs-handle').addEventListener('click',toggleBottomSheet);
+
+// ═══════════════════════════════════════════════════════
+//  INFO BAR
+// ═══════════════════════════════════════════════════════
+function setInfo(msg){document.getElementById('info-text').textContent=msg;}
+
+// ═══════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════
+function clearAll(){
+  saveUndo();
+  components=[]; selectedComp=null; wireStart=null; simResults=null;
+  showProps(null);
+  document.getElementById('results-scroll').innerHTML='<div style="padding:20px 8px;text-align:center;color:var(--t3);font-size:12px;line-height:1.7">Build a circuit then press<br><b style="color:var(--t2)">▶ Simulate</b></div>';
+  document.getElementById('diag-items').innerHTML='<div style="font-size:11px;color:var(--t3)">Run simulation first</div>';
+  document.getElementById('info-chip').textContent='';
+  setInfo('Canvas cleared. Select a tool and tap to start.');
+  draw();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEMO CIRCUIT
+// ═══════════════════════════════════════════════════════
+function loadDemo(){
+  clearAll(); undoStack=[]; nextId=1;
+  const G=GRID, ox=G, oy=G*2;
+  components=[
+    // Battery
+    {id:nextId++,type:'battery',x:ox,y:oy,w:96,h:48,value:9,unit:'V'},
+    // Wire up top
+    {id:nextId++,type:'wire',x:ox+96,y:oy+24,x2:ox+96+G,y2:oy+24},
+    // Switch
+    {id:nextId++,type:'switch',x:ox+96+G,y:oy,w:96,h:48,closed:true},
+    // Wire to resistor
+    {id:nextId++,type:'wire',x:ox+96+G+96,y:oy+24,x2:ox+96+G*2+96,y2:oy+24},
+    // Resistor
+    {id:nextId++,type:'resistor',x:ox+96+G*2+96,y:oy,w:96,h:48,value:220,unit:'Ω'},
+    // Wire to LED
+    {id:nextId++,type:'wire',x:ox+96*2+G*3,y:oy+24,x2:ox+96*2+G*4,y2:oy+24},
+    // LED
+    {id:nextId++,type:'led',x:ox+96*2+G*4,y:oy,w:96,h:48,value:2.0,unit:'Vf',colour:'red'},
+    // Wire down right side
+    {id:nextId++,type:'wire',x:ox+96*3+G*4,y:oy+24,x2:ox+96*3+G*4,y2:oy+24+G*3},
+    // Bottom wire back
+    {id:nextId++,type:'wire',x:ox,y:oy+24+G*3,x2:ox+96*3+G*4,y2:oy+24+G*3},
+    // Wire up left
+    {id:nextId++,type:'wire',x:ox,y:oy+24,x2:ox,y2:oy+24+G*3},
+    // Ground
+    {id:nextId++,type:'ground',x:ox+G*2+96,y:oy+24+G*3},
+    // Bulb branch (parallel-ish, just after battery)
+    {id:nextId++,type:'wire',x:ox+96,y:oy+24+G*3-G,x2:ox+96+G,y2:oy+24+G*3-G},
+    {id:nextId++,type:'bulb',x:ox+96+G,y:oy+G*3-G-24,w:96,h:48,value:100,unit:'Ω'},
+    {id:nextId++,type:'wire',x:ox+96*2+G,y:oy+24+G*3-G,x2:ox+96*2+G*2,y2:oy+24+G*3-G},
+    // Ammeter
+    {id:nextId++,type:'ammeter',x:ox+96+G*2+96+96,y:oy+24+G*3-24,w:96,h:48},
+  ];
+  resetZoom();
+  setInfo('Demo loaded — press ▶ Simulate or enable Auto-run');
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUILD SIDEBAR & COMP BAR
+// ═══════════════════════════════════════════════════════
+function svgIcon(type){
+  const s=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="22" viewBox="0 0 34 22">`;
+  const e=`</svg>`;
+  const st='#8b949e'; const lw='1.5';
+  const m=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${st}" stroke-width="${lw}" stroke-linecap="round"/>`;
+  const r=(x,y,w,h)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${st}" stroke-width="${lw}" rx="1"/>`;
+  const c=(cx,cy,r2)=>`<circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="${st}" stroke-width="${lw}"/>`;
+  const cf=(cx,cy,r2)=>`<circle cx="${cx}" cy="${cy}" r="${r2}" fill="${st}"/>`;
+  switch(type){
+    case'wire':      return s+m(2,11,32,11)+e;
+    case'battery':   return s+m(2,11,10,11)+`<line x1="10" y1="5" x2="10" y2="17" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+m(14,8,14,14)+`<line x1="18" y1="5" x2="18" y2="17" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+m(22,8,22,14)+m(22,11,32,11)+e;
+    case'resistor':  return s+m(2,11,7,11)+r(7,7,20,8)+m(27,11,32,11)+e;
+    case'capacitor': return s+m(2,11,13,11)+`<line x1="13" y1="4" x2="13" y2="18" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+`<line x1="17" y1="4" x2="17" y2="18" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+m(17,11,32,11)+e;
+    case'inductor':  return s+m(2,11,6,11)+`<path d="M6,11 q2,-8 4,0 q2,-8 4,0 q2,-8 4,0 q2,-8 4,0" fill="none" stroke="${st}" stroke-width="${lw}" stroke-linecap="round"/>`+m(22,11,32,11)+e;
+    case'potentiometer':return s+m(2,11,7,11)+r(7,7,20,8)+m(27,11,32,11)+m(17,7,17,2)+`<polyline points="14,2 17,7 20,2" fill="none" stroke="${st}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`+e;
+    case'led':       return s+m(2,11,9,11)+`<polygon points="9,5 9,17 21,11" fill="none" stroke="${st}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`+m(21,5,21,17)+m(21,11,32,11)+`<line x1="23" y1="4" x2="28" y2="1" stroke="#e3b341" stroke-width="1"/>`+`<line x1="25" y1="7" x2="31" y2="5" stroke="#e3b341" stroke-width="1"/>`+e;
+    case'diode':     return s+m(2,11,9,11)+`<polygon points="9,5 9,17 21,11" fill="none" stroke="${st}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`+m(21,5,21,17)+m(21,11,32,11)+e;
+    case'zener':     return s+m(2,11,9,11)+`<polygon points="9,5 9,17 21,11" fill="none" stroke="${st}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`+`<line x1="21" y1="5" x2="21" y2="17" stroke="${st}" stroke-width="${lw}" stroke-linecap="round"/>`+`<line x1="21" y1="5" x2="25" y2="3" stroke="${st}" stroke-width="${lw}"/>`+`<line x1="21" y1="17" x2="25" y2="19" stroke="${st}" stroke-width="${lw}"/>`+m(21,11,32,11)+e;
+    case'bulb':      return s+m(2,11,7,11)+c(17,11,8)+m(12,7,22,15)+m(22,7,12,15)+m(25,11,32,11)+e;
+    case'motor':     return s+m(2,11,9,11)+c(17,11,8)+`<text x="17" y="15" text-anchor="middle" fill="${st}" font-size="9" font-family="sans-serif" font-weight="bold">M</text>`+m(25,11,32,11)+e;
+    case'switch':    return s+m(2,11,9,11)+cf(9,11,2.5)+`<line x1="11" y1="11" x2="23" y2="6" stroke="${st}" stroke-width="${lw}" stroke-linecap="round"/>`+cf(23,11,2.5)+m(23,11,32,11)+e;
+    case'push_btn':  return s+m(2,11,9,11)+cf(9,11,2.5)+m(11,14,23,14)+m(17,11,17,14)+cf(23,11,2.5)+m(23,11,32,11)+e;
+    case'spdt':      return s+m(2,11,9,11)+cf(9,11,2.5)+`<line x1="11" y1="11" x2="23" y2="7" stroke="${st}" stroke-width="${lw}" stroke-linecap="round"/>`+cf(23,7,2.5)+cf(23,15,2.5)+m(23,7,32,7)+m(23,15,32,15)+e;
+    case'voltmeter': return s+m(2,11,9,11)+c(17,11,8)+`<text x="17" y="15" text-anchor="middle" fill="${st}" font-size="9" font-family="sans-serif">V</text>`+m(25,11,32,11)+e;
+    case'ammeter':   return s+m(2,11,9,11)+c(17,11,8)+`<text x="17" y="15" text-anchor="middle" fill="${st}" font-size="9" font-family="sans-serif">A</text>`+m(25,11,32,11)+e;
+    case'ohmmeter':  return s+m(2,11,9,11)+c(17,11,8)+`<text x="17" y="15" text-anchor="middle" fill="${st}" font-size="9" font-family="sans-serif">Ω</text>`+m(25,11,32,11)+e;
+    case'ground':    return s+m(17,3,17,10)+`<line x1="7" y1="10" x2="27" y2="10" stroke="${st}" stroke-width="2" stroke-linecap="round"/>`+m(10,14,24,14)+m(13,18,21,18)+e;
+    case'vcc':       return s+m(17,22,17,12)+`<line x1="9" y1="12" x2="25" y2="12" stroke="${st}" stroke-width="2" stroke-linecap="round"/>`+`<text x="17" y="9" text-anchor="middle" fill="#f85149" font-size="8" font-family="sans-serif" font-weight="bold">VCC</text>`+e;
+    case'ac_source': return s+m(2,11,9,11)+c(17,11,8)+`<path d="M11,11 q2,-6 3,0 q1,6 3,0" fill="none" stroke="${st}" stroke-width="1" stroke-linecap="round"/>`+m(25,11,32,11)+e;
+    case'npn':       return s+`<line x1="10" y1="5" x2="10" y2="17" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+m(2,7,10,7)+m(2,15,10,15)+m(10,7,20,4)+m(10,15,20,18)+m(20,4,32,4)+m(2,11,10,11)+e;
+    case'pnp':       return s+`<line x1="10" y1="5" x2="10" y2="17" stroke="${st}" stroke-width="2.5" stroke-linecap="round"/>`+m(2,7,10,7)+m(2,15,10,15)+m(10,7,20,4)+m(10,15,20,18)+m(20,4,32,4)+m(2,11,10,11)+e;
+    case'relay':     return s+r(8,3,18,8)+m(2,11,8,11)+m(26,11,32,11)+`<text x="17" y="9" text-anchor="middle" fill="${st}" font-size="7" font-family="sans-serif">RELAY</text>`+m(8,15,32,15)+e;
+    case'buzzer':    return s+m(2,11,9,11)+c(17,11,8)+`<text x="17" y="15" text-anchor="middle" fill="${st}" font-size="9" font-family="sans-serif">🔔</text>`+m(25,11,32,11)+e;
+    case'and_gate':  return s+`<path d="M5,4 L16,4 A8,8 0 0 1 16,18 L5,18 Z" fill="none" stroke="${st}" stroke-width="${lw}"/>`+m(2,7,5,7)+m(2,15,5,15)+m(24,11,32,11)+`<text x="12" y="14" fill="${st}" font-size="8" font-family="sans-serif">&amp;</text>`+e;
+    case'or_gate':   return s+`<path d="M5,4 Q12,4 24,11 Q12,18 5,18 Q9,11 5,4" fill="none" stroke="${st}" stroke-width="${lw}"/>`+m(2,7,8,7)+m(2,15,8,15)+m(24,11,32,11)+`<text x="12" y="14" fill="${st}" font-size="8" font-family="sans-serif">≥1</text>`+e;
+    case'not_gate':  return s+`<path d="M4,4 L22,11 L4,18 Z" fill="none" stroke="${st}" stroke-width="${lw}"/>`+c(25,11,3)+m(2,11,4,11)+m(28,11,32,11)+e;
+    case'nand_gate': return s+`<path d="M5,4 L16,4 A8,8 0 0 1 16,18 L5,18 Z" fill="none" stroke="${st}" stroke-width="${lw}"/>`+c(25,11,3)+m(2,7,5,7)+m(2,15,5,15)+m(28,11,32,11)+`<text x="12" y="14" fill="${st}" font-size="7" font-family="sans-serif">NAND</text>`+e;
+    default: return s+r(6,6,22,10)+e;
+  }
+}
+
+function buildSidebar(){
+  const list=document.getElementById('comp-list');
+  const bar=document.getElementById('comp-bar');
+  list.innerHTML=''; bar.innerHTML='';
+
+  // Add demo/load buttons to bar
+  const demoBtn=document.createElement('button');
+  demoBtn.className='cpill'; demoBtn.textContent='Demo';
+  demoBtn.style.background='var(--green-bg)'; demoBtn.style.borderColor='var(--green-bd)'; demoBtn.style.color='var(--green)';
+  demoBtn.addEventListener('click',loadDemo); bar.appendChild(demoBtn);
+
+  const sep=document.createElement('div');
+  sep.style.cssText='width:0.5px;height:20px;background:var(--border);flex-shrink:0;margin:0 2px';
+  bar.appendChild(sep);
+
+  CATS.forEach(cat=>{
+    // Sidebar category header
+    const ch=document.createElement('div'); ch.className='cat-header'; ch.textContent=cat.label;
+    list.appendChild(ch);
+
+    cat.items.forEach(def=>{
+      // Sidebar button
+      const btn=document.createElement('button');
+      btn.className='comp-btn'+(def.type===selectedTool?' active':'');
+      btn.dataset.type=def.type;
+      btn.title=def.desc||def.label;
+      const img=`<img src="data:image/svg+xml;base64,${btoa(svgIcon(def.type))}" width="34" height="22" alt="">`;
+      btn.innerHTML=`<span class="ci">${img}</span>${def.label}`;
+      btn.addEventListener('click',()=>selectTool(def.type));
+      list.appendChild(btn);
+
+      // Mobile pill
+      const pill=document.createElement('button');
+      pill.className='cpill'+(def.type===selectedTool?' active':'');
+      pill.dataset.type=def.type;
+      pill.innerHTML=`<img src="data:image/svg+xml;base64,${btoa(svgIcon(def.type))}" width="22" height="15" alt="">${def.label}`;
+      pill.addEventListener('click',()=>selectTool(def.type));
+      bar.appendChild(pill);
+    });
+  });
+
+  // Demo button in sidebar
+  const demoSb=document.createElement('button');
+  demoSb.className='comp-btn'; demoSb.style.color='var(--green)'; demoSb.style.borderColor='var(--green-bd)';
+  demoSb.innerHTML=`<span class="ci">▶</span>Load Demo`;
+  demoSb.addEventListener('click',loadDemo);
+  list.appendChild(demoSb);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+buildSidebar();
+resize();
+// Center viewport
+vx=W*0.1; vy=H*0.05;
+drawGrid();
+setInfo('Select a component and tap the canvas to place it · Pinch to zoom · Space+drag to pan');
+document.getElementById('zoom-label').textContent='100%';
+</script>
+</body>
+</html>
